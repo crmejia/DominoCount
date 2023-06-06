@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Contar Nuevo Juego</title>
+    <style>
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+<h1>Contar Nuevo Juego</h1>
+<div id="errors">
+    {{range .Errors}}
+    <p class="error"> {{ . }}</p>
+    {{end}}
+</div>
+<form action="/match/create/" method="post">
+    <label for="team1_name">Nombre del primer equipo:</label><br>
+    <input type="text" id="team1_name" name="team1_name" value="{{.Team1Name}}"><br>
+
+    <label for="team2_name">Nombre del segundo equipo:</label><br>
+    <input type="text" id="team2_name" name="team2_name" value="{{.Team2Name}}"><br>
+    <input type="submit" value="Create">
+</form>
+<div>
+    <a href="/">cancel</a>
+</div>
+</body>
+</html>

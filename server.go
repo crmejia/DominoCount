@@ -42,6 +42,16 @@ func (s server) HandleIndex() http.HandlerFunc {
 	}
 }
 
+func (s server) HandleMatchCreate() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			render(w, r, createMatchTemplate, nil)
+			return
+		}
+		//http.MethodPost
+	}
+}
+
 type server struct {
 	*http.Server
 	output io.Writer
@@ -67,6 +77,7 @@ func render(w http.ResponseWriter, r *http.Request, templateName string, data an
 }
 
 const (
-	templatesDir  = "templates/*"
-	indexTemplate = "index.html"
+	templatesDir        = "templates/*"
+	indexTemplate       = "index.html"
+	createMatchTemplate = "createGuide.html"
 )
