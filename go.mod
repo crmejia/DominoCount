@@ -3,6 +3,7 @@ module dominocount
 go 1.20
 
 require (
+	github.com/mitchellh/go-homedir v1.1.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	modernc.org/sqlite v1.23.0
 )

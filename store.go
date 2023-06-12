@@ -57,7 +57,7 @@ func (s *sqliteStore) UpdateMatch(m *match) error {
 	if err != nil {
 		return err
 	}
-	_, err = stmt.Exec(m.Team1, m.Team2, m.score1, m.score2, m.Id)
+	_, err = stmt.Exec(m.Team1, m.Team2, m.Score1, m.Score2, m.Id)
 	if err != nil {
 		return err
 	}
@@ -83,8 +83,8 @@ func (s *sqliteStore) GetMatch(id int64) (match, error) {
 		m.Id = id
 		m.Team1 = team1Name
 		m.Team2 = team2Name
-		m.score1 = team1Score
-		m.score2 = team2Score
+		m.Score1 = team1Score
+		m.Score2 = team2Score
 	}
 	if err = rows.Err(); err != nil {
 		return match{}, err

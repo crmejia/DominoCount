@@ -1,7 +1,7 @@
 package dominocount
 
 type match struct {
-	score1, score2 int
+	Score1, Score2 int
 	Team1, Team2   string
 	Id             int64
 }
@@ -11,8 +11,8 @@ func NewMatch(opts ...matchOption) match {
 	m := match{
 		Team1:  string(Team1),
 		Team2:  string(Team2),
-		score1: 0,
-		score2: 0,
+		Score1: 0,
+		Score2: 0,
 	}
 
 	for _, opt := range opts {
@@ -45,21 +45,21 @@ func (m *match) AddPoints(t team, points int) {
 		return
 	}
 	if t == Team1 {
-		m.score1 += points
+		m.Score1 += points
 		return
 	}
-	m.score2 += points
+	m.Score2 += points
 }
 
 func (m match) Score(t team) int {
 	if t == Team1 {
-		return m.score1
+		return m.Score1
 	}
-	return m.score2
+	return m.Score2
 }
 
 func (m match) GameOver() bool {
-	if m.score1 >= 200 || m.score2 >= 200 {
+	if m.Score1 >= 200 || m.Score2 >= 200 {
 		return true
 	}
 	return false
