@@ -149,7 +149,7 @@ func TestCreateMatchHandlerPostCreatesMatch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m, err := store.GetMatch(id)
+	m, err := store.GetMatchByID(id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +165,8 @@ func TestMatchHandlerRendersMatchScore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m, err := store.CreateMatch(dominocount.MatchWithTeam1Name("foo"), dominocount.MatchWithTeam2Name("bar"))
+	m := dominocount.NewMatch(dominocount.MatchWithTeam1Name("foo"), dominocount.MatchWithTeam2Name("bar"))
+	err = store.CreateMatch(&m)
 	if err != nil {
 		t.Fatal(err)
 	}

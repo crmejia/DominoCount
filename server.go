@@ -24,7 +24,7 @@ func NewServer(address string, output io.Writer, store sqliteStore) (server, err
 	server := server{
 		Server: &http.Server{Addr: address},
 		output: output,
-		store:  store,
+		store:  &store,
 	}
 
 	server.Handler = server.routes()
@@ -91,7 +91,7 @@ func (s *server) handleGetMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m, err := s.store.GetMatch(id)
+	m, err := s.store.GetMatchByID(id)
 	if err != nil {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
@@ -109,7 +109,8 @@ func (s *server) handleGetMatch(w http.ResponseWriter, r *http.Request) {
 func (s server) handleCreateMatch(w http.ResponseWriter, r *http.Request) {
 	team1Name := r.PostFormValue("team1_name")
 	team2Name := r.PostFormValue("team2_name")
-	m, err := s.store.CreateMatch(MatchWithTeam1Name(team1Name), MatchWithTeam2Name(team2Name))
+	m := NewMatch(MatchWithTeam1Name(team1Name), MatchWithTeam2Name(team2Name))
+	err := s.store.CreateMatch(&m)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		render(w, r, formMatchTemplate, nil)
@@ -124,7 +125,7 @@ func (s server) handleCreateMatch(w http.ResponseWriter, r *http.Request) {
 type server struct {
 	*http.Server
 	output io.Writer
-	store  sqliteStore
+	store  Storage
 }
 
 func (s *server) routes() http.Handler {

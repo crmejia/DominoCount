@@ -12,20 +12,20 @@ func TestSQLiteStore_MatchRoundtripCreateUpdateGet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	m, err := sqLiteStore.CreateMatch()
+	m := dominocount.NewMatch()
+	err = sqLiteStore.CreateMatch(&m)
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := "test"
 	m.Team1 = want
 	//m.Id = m.Id
-	err = sqLiteStore.UpdateMatch(m)
+	err = sqLiteStore.UpdateMatch(&m)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	got, err := sqLiteStore.GetMatch(m.Id)
+	got, err := sqLiteStore.GetMatchByID(m.Id)
 	if err != nil {
 		t.Fatal(err)
 	}

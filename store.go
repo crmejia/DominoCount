@@ -6,6 +6,13 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+type Storage interface {
+	CreateMatch(*match) error
+	//DeleteMatch(int)error
+	UpdateMatch(*match) error
+	GetMatchByID(int64) (*match, error)
+}
+
 func OpenSQLiteStore(dbPath string) (sqliteStore, error) {
 	if dbPath == "" {
 		return sqliteStore{}, errors.New("db path cannot be empty")
@@ -32,23 +39,22 @@ func OpenSQLiteStore(dbPath string) (sqliteStore, error) {
 
 }
 
-func (s *sqliteStore) CreateMatch(opts ...matchOption) (*match, error) {
-	m := NewMatch(opts...)
+func (s *sqliteStore) CreateMatch(m *match) error {
 	stmt, err := s.db.Prepare(insertMatch)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	rs, err := stmt.Exec(m.Team1, m.Team2)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	lastInsertID, err := rs.LastInsertId()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	m.Id = lastInsertID
-	return &m, nil
+	return nil
 }
 
 func (s *sqliteStore) UpdateMatch(m *match) error {
@@ -63,10 +69,10 @@ func (s *sqliteStore) UpdateMatch(m *match) error {
 	return nil
 }
 
-func (s *sqliteStore) GetMatch(id int64) (match, error) {
+func (s *sqliteStore) GetMatchByID(id int64) (*match, error) {
 	rows, err := s.db.Query(getMatch, id)
 	if err != nil {
-		return match{}, err
+		return nil, err
 	}
 	m := match{}
 
@@ -77,7 +83,7 @@ func (s *sqliteStore) GetMatch(id int64) (match, error) {
 		)
 		err = rows.Scan(&team1Name, &team2Name, &team1Score, &team2Score)
 		if err != nil {
-			return match{}, err
+			return nil, err
 		}
 		m.Id = id
 		m.Team1 = team1Name
@@ -86,9 +92,9 @@ func (s *sqliteStore) GetMatch(id int64) (match, error) {
 		m.Score2 = team2Score
 	}
 	if err = rows.Err(); err != nil {
-		return match{}, err
+		return nil, err
 	}
-	return m, nil
+	return &m, nil
 }
 
 type sqliteStore struct {
