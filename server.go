@@ -4,13 +4,12 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"github.com/gorilla/mux"
+	"github.com/mitchellh/go-homedir"
 	"html/template"
 	"io"
 	"net/http"
 	"strconv"
-	"strings"
-
-	"github.com/mitchellh/go-homedir"
 )
 
 func NewServer(address string, output io.Writer, store sqliteStore) (server, error) {
@@ -61,60 +60,65 @@ func (s server) HandleIndex() http.HandlerFunc {
 	}
 }
 
-func (s server) HandleMatchCreate() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet {
-			render(w, r, createMatchTemplate, nil)
-			return
-		}
-		//http.MethodPost
-		team1Name := r.PostFormValue("team1name")
-		team2Name := r.PostFormValue("team2name")
-		m, err := s.store.CreateMatch(MatchWithTeam1Name(team1Name), MatchWithTeam2Name(team2Name))
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			render(w, r, createMatchTemplate, nil)
-			return
-		}
-		matchURL := fmt.Sprintf("match/%d", m.Id)
-		w.Header().Set("Location", matchURL)
-		w.WriteHeader(http.StatusCreated)
-		return
-	}
-}
-
 func (s server) HandleMatch() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
-			p := strings.Split(r.URL.Path, "/")
-			if len(p) < 3 {
-				http.Error(w, "no match ID provided", http.StatusBadRequest)
-				return
-			}
-
-			matchId := p[2]
-			id, err := strconv.ParseInt(matchId, 10, 64)
-			if err != nil {
-				http.Error(w, "not able to parse match ID", http.StatusBadRequest)
-				return
-			}
-
-			m, err := s.store.GetMatch(id)
-			if err != nil {
-				http.Error(w, "internal server error", http.StatusInternalServerError)
-				return
-			}
-
-			if m.Id == 0 {
-				http.Error(w, "Match Not Found", http.StatusNotFound)
-				return
-			}
-
-			render(w, r, matchTemplate, m)
-			return
+			s.handleGetMatch(w, r)
 		}
-		//http.MethodPost
+
+		if r.Method == http.MethodPost {
+			s.handleCreateMatch(w, r)
+		}
 	}
+}
+
+func (s *server) HandleMatchForm() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		render(w, r, formMatchTemplate, nil)
+		return
+	}
+}
+func (s *server) handleGetMatch(w http.ResponseWriter, r *http.Request) {
+	matchId := mux.Vars(r)["id"]
+	if matchId == "" {
+		http.Error(w, "no match ID provided", http.StatusBadRequest)
+		return
+	}
+
+	id, err := strconv.ParseInt(matchId, 10, 64)
+	if err != nil {
+		http.Error(w, "not able to parse match ID", http.StatusBadRequest)
+		return
+	}
+
+	m, err := s.store.GetMatch(id)
+	if err != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if m.Id == 0 {
+		http.Error(w, "Match Not Found", http.StatusNotFound)
+		return
+	}
+
+	render(w, r, matchTemplate, m)
+	return
+}
+
+func (s server) handleCreateMatch(w http.ResponseWriter, r *http.Request) {
+	team1Name := r.PostFormValue("team1_name")
+	team2Name := r.PostFormValue("team2_name")
+	m, err := s.store.CreateMatch(MatchWithTeam1Name(team1Name), MatchWithTeam2Name(team2Name))
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		render(w, r, formMatchTemplate, nil)
+		return
+	}
+	matchURL := fmt.Sprintf("match/%d", m.Id)
+	w.Header().Set("Location", matchURL)
+	w.WriteHeader(http.StatusCreated)
+	return
 }
 
 type server struct {
@@ -124,10 +128,11 @@ type server struct {
 }
 
 func (s *server) routes() http.Handler {
-	router := http.NewServeMux()
+	router := mux.NewRouter()
 	router.HandleFunc("/", s.HandleIndex())
+	router.HandleFunc("/match/create", s.HandleMatchForm())
 	router.HandleFunc("/match/", s.HandleMatch())
-	router.HandleFunc("/match/create/", s.HandleMatchCreate())
+	router.HandleFunc("/match/{id}", s.HandleMatch())
 
 	return router
 }
@@ -145,8 +150,8 @@ func render(w http.ResponseWriter, r *http.Request, templateName string, data an
 }
 
 const (
-	templatesDir        = "templates/*"
-	indexTemplate       = "index.html"
-	createMatchTemplate = "createMatch.html"
-	matchTemplate       = "match.html"
+	templatesDir      = "templates/*"
+	indexTemplate     = "index.html"
+	formMatchTemplate = "matchForm.html"
+	matchTemplate     = "match.html"
 )

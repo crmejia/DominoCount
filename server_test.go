@@ -2,6 +2,7 @@ package dominocount_test
 
 import (
 	"dominocount"
+	"github.com/gorilla/mux"
 	"github.com/phayes/freeport"
 	"strconv"
 
@@ -70,7 +71,7 @@ func TestNewServerErrorsOnEmptyAddress(t *testing.T) {
 	}
 }
 
-func TestCreateMatchHandlerGetRendersForm(t *testing.T) {
+func TestServer_HandleMatchFormRendersForm(t *testing.T) {
 	t.Parallel()
 	freePort, err := freeport.GetFreePort()
 	if err != nil {
@@ -90,10 +91,12 @@ func TestCreateMatchHandlerGetRendersForm(t *testing.T) {
 		t.Fatal(err)
 	}
 	rec := httptest.NewRecorder()
+	//the handler doesn't user the match actually
 	req := httptest.NewRequest(http.MethodGet, "/match/create", nil)
 
-	handler := server.HandleMatchCreate()
+	handler := server.HandleMatchForm()
 	handler(rec, req)
+	//server.handleCreateMatch(rec, req)
 
 	result := rec.Result()
 	if result.StatusCode != http.StatusOK {
@@ -126,10 +129,10 @@ func TestCreateMatchHandlerPostCreatesMatch(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	form := strings.NewReader("team1name=foo&team2name=bar")
+	form := strings.NewReader("team1_name=foo&team2_name=bar")
 	req := httptest.NewRequest(http.MethodPost, "/match/create", form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	handler := server.HandleMatchCreate()
+	handler := server.HandleMatch()
 	handler(rec, req)
 
 	res := rec.Result()
@@ -175,6 +178,8 @@ func TestMatchHandlerRendersMatchScore(t *testing.T) {
 	rec := httptest.NewRecorder()
 	url := fmt.Sprintf("/match/%d", m.Id)
 	req := httptest.NewRequest(http.MethodGet, url, nil)
+	req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(m.Id, 10)})
+
 	handler := server.HandleMatch()
 	handler(rec, req)
 

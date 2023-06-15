@@ -3,7 +3,6 @@ package dominocount
 import (
 	"database/sql"
 	"errors"
-
 	_ "modernc.org/sqlite"
 )
 
