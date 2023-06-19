@@ -11,6 +11,7 @@ type Storage interface {
 	//DeleteMatch(int)error
 	UpdateMatch(*match) error
 	GetMatchByID(int64) (*match, error)
+	AddPointsByID(int64, int, int) (*match, error)
 }
 
 func OpenSQLiteStore(dbPath string) (sqliteStore, error) {
@@ -69,6 +70,29 @@ func (s *sqliteStore) UpdateMatch(m *match) error {
 	return nil
 }
 
+// todo
+// test cannot add negative numbers
+// test cannot score bot ath the same time?
+func (s *sqliteStore) AddPointsByID(id int64, score1 int, score2 int) (*match, error) {
+
+	m, err := s.GetMatchByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	if m.GameOver() {
+		return nil, &GameOverError{}
+	}
+	m.AddPoints(Team1, score1)
+	m.AddPoints(Team2, score2)
+
+	err = s.UpdateMatch(m)
+	if err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func (s *sqliteStore) GetMatchByID(id int64) (*match, error) {
 	rows, err := s.db.Query(getMatch, id)
 	if err != nil {
@@ -95,6 +119,12 @@ func (s *sqliteStore) GetMatchByID(id int64) (*match, error) {
 		return nil, err
 	}
 	return &m, nil
+}
+
+type GameOverError struct{}
+
+func (err *GameOverError) Error() string {
+	return "game over"
 }
 
 type sqliteStore struct {

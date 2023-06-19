@@ -15,6 +15,22 @@ import (
 	"testing"
 )
 
+// server tests
+func TestNewServerErrorsOnEmptyAddress(t *testing.T) {
+	t.Parallel()
+	tempDB := t.TempDir() + t.Name() + ".store"
+
+	store, err := dominocount.OpenSQLiteStore(tempDB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = dominocount.NewServer("", os.Stdout, store)
+	if err == nil {
+		t.Errorf("want error on empty server address")
+	}
+}
+
+// handler test
 func TestIndexHandlerRendersNewGameButton(t *testing.T) {
 	t.Parallel()
 
@@ -25,7 +41,8 @@ func TestIndexHandlerRendersNewGameButton(t *testing.T) {
 
 	address := fmt.Sprintf("localhost:%d", freePort)
 
-	tempDB := t.TempDir() + "indexhandler.store"
+	tempDB := t.TempDir() + t.Name() + ".store"
+
 	store, err := dominocount.OpenSQLiteStore(tempDB)
 	if err != nil {
 		t.Fatal(err)
@@ -58,19 +75,6 @@ func TestIndexHandlerRendersNewGameButton(t *testing.T) {
 	}
 }
 
-func TestNewServerErrorsOnEmptyAddress(t *testing.T) {
-	t.Parallel()
-	tempDB := t.TempDir() + "error.store"
-	store, err := dominocount.OpenSQLiteStore(tempDB)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = dominocount.NewServer("", os.Stdout, store)
-	if err == nil {
-		t.Errorf("want error on empty server address")
-	}
-}
-
 func TestServer_HandleMatchFormRendersForm(t *testing.T) {
 	t.Parallel()
 	freePort, err := freeport.GetFreePort()
@@ -80,7 +84,7 @@ func TestServer_HandleMatchFormRendersForm(t *testing.T) {
 
 	address := fmt.Sprintf("localhost:%d", freePort)
 
-	tempDB := t.TempDir() + "handleMatchCreateGet.store"
+	tempDB := t.TempDir() + t.Name() + ".store"
 	store, err := dominocount.OpenSQLiteStore(tempDB)
 	if err != nil {
 		t.Fatal(err)
@@ -115,9 +119,9 @@ func TestServer_HandleMatchFormRendersForm(t *testing.T) {
 	}
 }
 
-func TestCreateMatchHandlerPostCreatesMatch(t *testing.T) {
+func TestMatchHandlerCreatesMatch(t *testing.T) {
 	t.Parallel()
-	tempDB := t.TempDir() + "matchHandlerPost.store"
+	tempDB := t.TempDir() + t.Name() + ".store"
 	store, err := dominocount.OpenSQLiteStore(tempDB)
 	if err != nil {
 		t.Fatal(err)
@@ -160,7 +164,8 @@ func TestCreateMatchHandlerPostCreatesMatch(t *testing.T) {
 
 func TestMatchHandlerRendersMatchScore(t *testing.T) {
 	t.Parallel()
-	tempDB := t.TempDir() + "match.store"
+	tempDB := t.TempDir() + t.Name() + ".store"
+
 	store, err := dominocount.OpenSQLiteStore(tempDB)
 	if err != nil {
 		t.Fatal(err)
@@ -196,5 +201,49 @@ func TestMatchHandlerRendersMatchScore(t *testing.T) {
 	got := string(body)
 	if !strings.Contains(got, want) {
 		t.Errorf("want index to contain %s\nGot:\n%s", want, got)
+	}
+}
+
+func TestMatchHandlerUpdatesScore(t *testing.T) {
+	t.Parallel()
+
+	tempDB := t.TempDir() + t.Name() + ".db"
+	store, err := dominocount.OpenSQLiteStore(tempDB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := dominocount.NewMatch(dominocount.MatchWithTeam1Name("foo"), dominocount.MatchWithTeam2Name("bar"))
+	err = store.CreateMatch(&m)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	server, err := dominocount.NewServer("localhost:8080", os.Stdout, store)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rec := httptest.NewRecorder()
+	url := fmt.Sprintf("/match/%d", m.Id)
+	form := strings.NewReader("team1_points=20&team2_points=0")
+	req := httptest.NewRequest(http.MethodPost, url, form)
+	req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(m.Id, 10)})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	handler := server.HandleMatch()
+	handler(rec, req)
+
+	res := rec.Result()
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("expected status 200 OK, body %d", res.StatusCode)
+	}
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "20"
+	got := string(body)
+	if !strings.Contains(got, want) {
+		t.Errorf("want score to contain %s\nGot:\n%s", want, got)
 	}
 }
