@@ -124,10 +124,8 @@ func (s server) handleCreateMatch(w http.ResponseWriter, r *http.Request) {
 		render(w, r, formMatchTemplate, nil)
 		return
 	}
-	matchURL := fmt.Sprintf("match/%d", m.Id)
-	w.Header().Set("Location", matchURL)
-	w.WriteHeader(http.StatusCreated)
-	return
+	matchURL := fmt.Sprintf("%d", m.Id)
+	http.Redirect(w, r, matchURL, http.StatusSeeOther)
 }
 
 func (s server) handlePatchMatch(w http.ResponseWriter, r *http.Request) {
