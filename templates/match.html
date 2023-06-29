@@ -4,24 +4,34 @@
 <head>
     <meta charset="UTF-8">
     <link rel="stylesheet" href="/static/style.css">
+    <script src="https://unpkg.com/htmx.org@1.9.2"
+        integrity="sha384-L6OqL9pRWyyFU3+/bjdSri+iIphTN/bvYyM37tICVyOJkWZLpP2vGn6VUEXgzg6h"
+        crossorigin="anonymous"></script>
     <title>Juego</title>
 </head>
 
 <body class="text-fourthcolor bg-firstcolor">
     <main class="px-16 py-8">
         <h1 class="text-4xl uppercase p-4">Juego</h1>
+        <table class="table-auto  px-8 py-4 mb-4">
+            <thead>
+                <tr>
+                    <th class="px-4 py-2">{{.Team1}}</th>
+                    <th class="px-4 py-2">{{.Team2}}</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="border px-4 py-2">{{.Score1}}</td>
+                    <td class="border px-4 py-2">{{.Score2}}</td>
+                </tr>
+                <tr id="replaceMe">
+
+                </tr>
+            </tbody>
+        </table>
         <div>
-            <div class="flex items-center justify-between px-8 py-4 mb-4">
-                <div>
-                    <h1 class="text-2xl p-4"> {{.Team1}}</h1>
-                    <h2> {{.Score1}}</h2>
-                </div>
-                <div>
-                    <h1 class="text-2xl p-4"> {{.Team2}}</h1>
-                    <h2> {{.Score2}}</h2>
-                </div>
-            </div>
-            <form class="bg-secondcolor shadow-md rounded px-8 pt-6 pb-8 mb-4" action="/match/{{ .Id }}" method="POST">
+            <form class="bg-secondcolor shadow-md rounded px-8 pt-6 pb-8 mb-4">
                 <div class="flex items-center justify-between px-8 pt-6 pb-8 mb-4">
                     <div>
                         <label class="text-sm font-bold leading-tight" for="team1_points">puntos {{.Team1}}:</label>
@@ -32,12 +42,10 @@
                         <input class="w-9 rounded border" type="number" id="team2_points" name="team2_points" value="0">
                     </div>
                 </div>
-                <!-- <br> -->
-                <!-- <input type="submit" value="sumar puntos"> -->
                 <div class="flex items-center justify-between">
                     <button
                         class="block  w-20 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px4 rounded focus:outline-none focus:shadow-outline"
-                        type="submit" value="sumar puntos">
+                        hx-patch="/match/{{ .Id}}" hx-target="#replaceMe" hx-swap="outerHTML">
                         sumar puntos
                     </button>
                 </div>

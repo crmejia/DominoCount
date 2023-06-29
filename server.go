@@ -4,13 +4,14 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"github.com/gorilla/mux"
-	"github.com/mitchellh/go-homedir"
 	"html/template"
 	"io"
 	"io/fs"
 	"net/http"
 	"strconv"
+
+	"github.com/gorilla/mux"
+	"github.com/mitchellh/go-homedir"
 )
 
 func NewServer(address string, output io.Writer, store sqliteStore) (server, error) {
@@ -75,13 +76,11 @@ func (s server) HandleMatch() http.HandlerFunc {
 		}
 
 		if r.Method == http.MethodPost {
-			_, err := queryStringParseID(r)
-			//this is a hack. If there's no id present CREATE
-			if err != nil {
-				s.handleCreateMatch(w, r)
-				return
-			}
+			s.handleCreateMatch(w, r)
+			return
+		}
 
+		if r.Method == http.MethodPatch {
 			//method PATCH
 			s.handlePatchMatch(w, r)
 			return
@@ -167,7 +166,7 @@ func (s server) handlePatchMatch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	render(w, r, matchTemplate, m)
+	render(w, r, matchTableTemplate, m)
 	return
 }
 
@@ -238,8 +237,9 @@ func render(w http.ResponseWriter, r *http.Request, templateName string, data an
 }
 
 const (
-	templatesDir      = "templates/*"
-	indexTemplate     = "index.html"
-	formMatchTemplate = "matchForm.html"
-	matchTemplate     = "match.html"
+	templatesDir       = "templates/*"
+	indexTemplate      = "index.html"
+	formMatchTemplate  = "matchForm.html"
+	matchTemplate      = "match.html"
+	matchTableTemplate = "matchTable.html"
 )
