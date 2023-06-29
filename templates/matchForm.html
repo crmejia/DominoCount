@@ -2,30 +2,33 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <link rel="stylesheet" href="/static/style.css">
     <title>Contar Nuevo Juego</title>
-    <style>
-        .error {
-            color: red;
-        }
-    </style>
 </head>
-<body>
-<h1>Contar Nuevo Juego</h1>
-<div id="errors">
-    {{range .Errors}}
-    <p class="error"> {{ . }}</p>
-    {{end}}
-</div>
-<form action="/match/" method="POST">
-    <label for="team1_name">Nombre del primer equipo:</label><br>
-    <input type="text" id="team1_name" name="team1_name" value="{{.Team1Name}}"><br>
-
-    <label for="team2_name">Nombre del segundo equipo:</label><br>
-    <input type="text" id="team2_name" name="team2_name" value="{{.Team2Name}}"><br>
-    <input type="submit" value="Create">
+<body class="text-fourthcolor bg-firstcolor">
+    <main class="px-16 py-8">
+<h1 class="text-xl uppercase p-4">Contar Nuevo Juego</h1>
+<form class="bg-secondcolor shadow-md rounded px-8 pt-6 pb-8 mb-4" action="/match/" method="POST">
+    <div class="mb-4">
+    <label class="block text-sm font-bold mb-2" for="team1_name">Nombre del primer equipo:</label><br>
+    <input class="shadow appearance-none border rounded w-full py-2 px-3 leading-tight focus:outline-none focus:shadow-outline" type="text" id="team1_name" name="team1_name" value="{{.Team1Name}}"><br>
+    </div>
+    <div class="mb-4">
+    <label class="block text-sm font-bold mb-2" for="team2_name">Nombre del segundo equipo:</label><br>
+    <input class="shadow appearance-none border rounded w-full py-2 px-3 leading-tight focus:outline-none focus:shadow-outline" type="text" id="team2_name" name="team2_name" value="{{.Team2Name}}"><br>
+    </div>
+    <div class="flex items-center justify-between">
+    <!-- <input type="submit" value="Create"> -->
+        <button class="w-20 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px4 rounded focus:outline-none focus:shadow-outline" type="submit" >
+            Crear
+        </button>
+        <a class="inline-block align-baseline font-bold text-sm hover:text-blue-800" href="/">
+            cancel
+        </a>
+        </div>
 </form>
 <div>
-    <a href="/">cancel</a>
 </div>
+</main>
 </body>
 </html>

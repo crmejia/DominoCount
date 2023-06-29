@@ -1,33 +1,49 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
+    <link rel="stylesheet" href="/static/style.css">
     <title>Juego</title>
-    <style>
-        .error {
-            color: red;
-        }
-    </style>
 </head>
-<body>
-<h1>Juego</h1>
-<div>
-    <div>
-        <h1> {{.Team1}}</h1>
-        <h2> {{.Score1}}</h2>
-    </div>
-    <div>
-        <h1> {{.Team2}}</h1>
-        <h2> {{.Score2}}</h2>
-    </div>
-    <form action ="/match/{{ .Id }}" method="POST">
-        <label for="team1_points">puntos {{.Team1}}:</label>
-        <input type="number" id="team1_points" name="team1_points" value="0" >
 
-        <label for="team2_points">puntos {{.Team2}}:</label>
-        <input type="number" id="team2_points" name="team2_points" value="0"><br>
-        <input type="submit" value="sumar puntos">
-    </form>
-</div>
+<body class="text-fourthcolor bg-firstcolor">
+    <main class="px-16 py-8">
+        <h1 class="text-4xl uppercase p-4">Juego</h1>
+        <div>
+            <div class="flex items-center justify-between px-8 py-4 mb-4">
+                <div>
+                    <h1 class="text-2xl p-4"> {{.Team1}}</h1>
+                    <h2> {{.Score1}}</h2>
+                </div>
+                <div>
+                    <h1 class="text-2xl p-4"> {{.Team2}}</h1>
+                    <h2> {{.Score2}}</h2>
+                </div>
+            </div>
+            <form class="bg-secondcolor shadow-md rounded px-8 pt-6 pb-8 mb-4" action="/match/{{ .Id }}" method="POST">
+                <div class="flex items-center justify-between px-8 pt-6 pb-8 mb-4">
+                    <div>
+                        <label class="text-sm font-bold leading-tight" for="team1_points">puntos {{.Team1}}:</label>
+                        <input class="w-9 rounded border" id="team1_points" name="team1_points" value="0">
+                    </div>
+                    <div>
+                        <label class="text-sm font-bold" for="team2_points">puntos {{.Team2}}:</label>
+                        <input class="w-9 rounded border" type="number" id="team2_points" name="team2_points" value="0">
+                    </div>
+                </div>
+                <!-- <br> -->
+                <!-- <input type="submit" value="sumar puntos"> -->
+                <div class="flex items-center justify-between">
+                    <button
+                        class="block  w-20 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px4 rounded focus:outline-none focus:shadow-outline"
+                        type="submit" value="sumar puntos">
+                        sumar puntos
+                    </button>
+                </div>
+            </form>
+        </div>
+    </main>
 </body>
+
 </html>

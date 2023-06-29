@@ -247,3 +247,38 @@ func TestMatchHandlerUpdatesScore(t *testing.T) {
 		t.Errorf("want score to contain %s\nGot:\n%s", want, got)
 	}
 }
+
+func TestStaticFilesAreBeingServed(t *testing.T) {
+	t.Parallel()
+
+	tempDB := t.TempDir() + t.Name() + ".db"
+	store, err := dominocount.OpenSQLiteStore(tempDB)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	server, err := dominocount.NewServer("localhost:8080", os.Stdout, store)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testServer := httptest.NewServer(server.Routes())
+	defer testServer.Close()
+
+	res, err := http.Get(testServer.URL + "/static/style.css")
+	if err != nil {
+		t.Fatal()
+	}
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("want to status %d, got %d", http.StatusOK, res.StatusCode)
+	}
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "tailwindcss"
+	if !strings.Contains(string(body), want) {
+		t.Errorf("expected stylesheet to contain tailwindcss")
+	}
+}

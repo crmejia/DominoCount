@@ -8,6 +8,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"html/template"
 	"io"
+	"io/fs"
 	"net/http"
 	"strconv"
 )
@@ -21,13 +22,19 @@ func NewServer(address string, output io.Writer, store sqliteStore) (server, err
 		return server{}, errors.New("output cannot be nil")
 	}
 
-	server := server{
-		Server: &http.Server{Addr: address},
-		output: output,
-		store:  &store,
+	assets, err := fs.Sub(css, "static")
+	if err != nil {
+		return server{}, err
 	}
 
-	server.Handler = server.routes()
+	server := server{
+		Server:     &http.Server{Addr: address},
+		output:     output,
+		store:      &store,
+		fileServer: http.FileServer(http.FS(assets)),
+	}
+
+	server.Handler = server.Routes()
 	return server, nil
 }
 
@@ -91,6 +98,7 @@ func (s *server) HandleMatchForm() http.HandlerFunc {
 		return
 	}
 }
+
 func (s *server) handleGetMatch(w http.ResponseWriter, r *http.Request) {
 	id, err := queryStringParseID(r)
 	if err != nil {
@@ -163,6 +171,10 @@ func (s server) handlePatchMatch(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+func (s server) HandleStatic(w http.ResponseWriter, r *http.Request) {
+
+}
+
 func queryStringParseID(r *http.Request) (int64, error) {
 	matchId := mux.Vars(r)["id"]
 	if matchId == "" {
@@ -193,22 +205,28 @@ func formParseScore(r *http.Request, id string) (int, error) {
 
 type server struct {
 	*http.Server
-	output io.Writer
-	store  Storage
+	output     io.Writer
+	store      Storage
+	fileServer http.Handler
 }
 
-func (s *server) routes() http.Handler {
+func (s *server) Routes() http.Handler {
 	router := mux.NewRouter()
 	router.HandleFunc("/", s.HandleIndex())
 	router.HandleFunc("/match/create", s.HandleMatchForm())
 	router.HandleFunc("/match/", s.HandleMatch())
 	router.HandleFunc("/match/{id}", s.HandleMatch())
+	router.Handle("/static/{file}", http.StripPrefix("/static", s.fileServer))
 
 	return router
 }
 
 //go:embed templates
 var resources embed.FS
+
+//go:embed static *.css
+var css embed.FS
+
 var tmpl = template.Must(template.ParseFS(resources, templatesDir))
 
 func render(w http.ResponseWriter, r *http.Request, templateName string, data any) {
