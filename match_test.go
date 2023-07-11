@@ -68,3 +68,15 @@ func TestCannotScoreAfterGameOver(t *testing.T) {
 	}
 
 }
+
+func TestCannotScoreNegativeNumbers(t *testing.T) {
+	t.Parallel()
+	m := dominocount.NewMatch()
+	want := 0
+	m.AddPoints(dominocount.Team1, -20)
+
+	got := m.Score(dominocount.Team1)
+	if got != want {
+		t.Errorf("want team 2 score to be %d, got %d", want, got)
+	}
+}

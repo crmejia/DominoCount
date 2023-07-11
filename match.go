@@ -44,6 +44,9 @@ func (m *match) AddPoints(t team, points int) {
 	if m.GameOver() {
 		return
 	}
+	if points < 0 {
+		return
+	}
 	if t == Team1 {
 		m.Score1 += points
 		return

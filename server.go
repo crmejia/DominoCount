@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/gorilla/mux"
@@ -35,16 +36,20 @@ func NewServer(address string, output io.Writer, store sqliteStore) (server, err
 		fileServer: http.FileServer(http.FS(assets)),
 	}
 
-	server.Handler = server.Routes()
 	return server, nil
 }
 
 func RunServer(output io.Writer) {
-	homeDir, err := homedir.Dir()
-	if err != nil {
-		fmt.Fprintln(output, err)
+	storeDir := os.Getenv(dbVolume)
+	if storeDir == "" {
+		homeDir, err := homedir.Dir()
+		if err != nil {
+			fmt.Fprintln(output, err)
+		}
+		storeDir = homeDir
 	}
-	store, err := OpenSQLiteStore(homeDir + "/.dominoCount.db")
+
+	store, err := OpenSQLiteStore(storeDir + "/.dominoCount.db")
 	if err != nil {
 		fmt.Fprintln(output, err)
 	}
@@ -54,12 +59,8 @@ func RunServer(output io.Writer) {
 		fmt.Fprintln(output, err)
 	}
 
-	fmt.Fprintln(output, "starting http server")
-	err = server.ListenAndServe()
-	if err != http.ErrServerClosed {
-		fmt.Fprintln(output, err)
-		return
-	}
+	server.run()
+
 }
 
 func (s server) HandleIndex() http.HandlerFunc {
@@ -94,7 +95,6 @@ func (s server) HandleMatch() http.HandlerFunc {
 func (s *server) HandleMatchForm() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		render(w, r, formMatchTemplate, nil)
-		return
 	}
 }
 
@@ -117,7 +117,6 @@ func (s *server) handleGetMatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	render(w, r, matchTemplate, m)
-	return
 }
 
 func (s server) handleCreateMatch(w http.ResponseWriter, r *http.Request) {
@@ -167,11 +166,18 @@ func (s server) handlePatchMatch(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	render(w, r, matchTableTemplate, m)
-	return
 }
 
-func (s server) HandleStatic(w http.ResponseWriter, r *http.Request) {
+func (s *server) run() {
+	fmt.Fprintln(s.output, "starting http server")
 
+	s.Handler = s.Routes()
+
+	err := s.ListenAndServe()
+	if err != http.ErrServerClosed {
+		fmt.Fprintln(s.output, err)
+		return
+	}
 }
 
 func queryStringParseID(r *http.Request) (int64, error) {
@@ -242,4 +248,6 @@ const (
 	formMatchTemplate  = "matchForm.html"
 	matchTemplate      = "match.html"
 	matchTableTemplate = "matchTable.html"
+
+	dbVolume = "SQLITE_VOLUME"
 )
