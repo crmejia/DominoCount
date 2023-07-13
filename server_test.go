@@ -1,18 +1,19 @@
 package dominocount_test
 
 import (
+	"bytes"
 	"dominocount"
+	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/phayes/freeport"
-	"strconv"
-
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 // server tests
@@ -24,7 +25,22 @@ func TestNewServerErrorsOnEmptyAddress(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = dominocount.NewServer("", os.Stdout, store)
+
+	_, err = dominocount.NewServer(store, dominocount.ServerWithAddress(""))
+	if err == nil {
+		t.Errorf("want error on empty server address")
+	}
+}
+
+func TestNewServerErrorsOnEmptyOutput(t *testing.T) {
+	t.Parallel()
+	tempDB := t.TempDir() + t.Name() + ".store"
+	store, err := dominocount.OpenSQLiteStore(tempDB)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = dominocount.NewServer(store, dominocount.ServerWithOutput(nil))
 	if err == nil {
 		t.Errorf("want error on empty server address")
 	}
@@ -48,7 +64,7 @@ func TestIndexHandlerRendersNewGameButton(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	server, err := dominocount.NewServer(address, os.Stdout, store)
+	server, err := dominocount.NewServer(store, dominocount.ServerWithAddress(address))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +106,8 @@ func TestServer_HandleMatchFormRendersForm(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	server, err := dominocount.NewServer(address, os.Stdout, store)
+	server, err := dominocount.NewServer(store, dominocount.ServerWithAddress(address))
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +144,7 @@ func TestMatchHandlerCreatesMatch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	server, err := dominocount.NewServer("localhost:8080", os.Stdout, store)
+	server, err := dominocount.NewServer(store)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,16 +157,16 @@ func TestMatchHandlerCreatesMatch(t *testing.T) {
 	handler(rec, req)
 
 	res := rec.Result()
-	if res.StatusCode != http.StatusCreated {
+	if res.StatusCode != http.StatusSeeOther {
 		t.Errorf("expected status 303 SeeOther, got %d", res.StatusCode)
 	}
 
 	//todo extract id from url?
-	location := strings.Split(res.Header.Get("Location"), "/")
+	location := strings.Split(res.Header.Get("location"), "/")
 	if len(location) < 2 {
 		t.Errorf("want url to contain ID")
 	}
-	id, err := strconv.ParseInt(location[1], 10, 64)
+	id, err := strconv.ParseInt(location[2], 10, 64)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +193,7 @@ func TestMatchHandlerRendersMatchScore(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	server, err := dominocount.NewServer("localhost:8080", os.Stdout, store)
+	server, err := dominocount.NewServer(store)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -218,7 +235,7 @@ func TestMatchHandlerUpdatesScore(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	server, err := dominocount.NewServer("localhost:8080", os.Stdout, store)
+	server, err := dominocount.NewServer(store)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,7 +243,7 @@ func TestMatchHandlerUpdatesScore(t *testing.T) {
 	rec := httptest.NewRecorder()
 	url := fmt.Sprintf("/match/%d", m.Id)
 	form := strings.NewReader("team1_points=20&team2_points=0")
-	req := httptest.NewRequest(http.MethodPost, url, form)
+	req := httptest.NewRequest(http.MethodPatch, url, form)
 	req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(m.Id, 10)})
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
@@ -257,7 +274,7 @@ func TestStaticFilesAreBeingServed(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	server, err := dominocount.NewServer("localhost:8080", os.Stdout, store)
+	server, err := dominocount.NewServer(store)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,5 +297,59 @@ func TestStaticFilesAreBeingServed(t *testing.T) {
 	want := "tailwindcss"
 	if !strings.Contains(string(body), want) {
 		t.Errorf("expected stylesheet to contain tailwindcss")
+	}
+}
+
+// Run server tests
+func TestServer_RunStartsServer(t *testing.T) {
+	t.Parallel()
+	freePort, err := freeport.GetFreePort()
+	if err != nil {
+		t.Fatal(err)
+	}
+	address := fmt.Sprintf("localhost:%d", freePort)
+	output := bytes.Buffer{}
+
+	tempDB := t.TempDir() + t.Name() + ".store"
+	store, err := dominocount.OpenSQLiteStore(tempDB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server, err := dominocount.NewServer(store, dominocount.ServerWithAddress(address), dominocount.ServerWithOutput(&output))
+	go server.Run()
+	time.Sleep(100 * time.Millisecond)
+
+	address = "http://" + address
+	//resp, err := retryHttpGet(address)
+	resp, err := http.Get(address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Want Status %d, got: %d", http.StatusNotFound, resp.StatusCode)
+	}
+
+	want := "Contar nuevo juego"
+	got, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Errorf("Not able to parse response")
+	}
+	if !strings.Contains(string(got), want) {
+		t.Errorf("want response body to be:\n %s \ngot:\n %s", want, got)
+	}
+}
+
+func TestRunServerSetsDbOnDifferentLocation(t *testing.T) {
+	t.Parallel()
+	dbLocation := t.TempDir()
+	os.Setenv("SQLITE_VOLUME", dbLocation)
+
+	output := &bytes.Buffer{}
+	go dominocount.RunServer(output)
+	time.Sleep(200 * time.Millisecond)
+
+	dbLocation = dbLocation + "/.dominoCount.db"
+	if _, err := os.Stat(dbLocation); os.IsNotExist(err) {
+		t.Error("want to find db in non-default location")
 	}
 }

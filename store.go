@@ -70,9 +70,6 @@ func (s *sqliteStore) UpdateMatch(m *match) error {
 	return nil
 }
 
-// todo
-// test cannot add negative numbers
-// test cannot score bot ath the same time?
 func (s *sqliteStore) AddPointsByID(id int64, score1 int, score2 int) (*match, error) {
 
 	m, err := s.GetMatchByID(id)

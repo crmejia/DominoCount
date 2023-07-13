@@ -15,30 +15,50 @@ import (
 	"github.com/mitchellh/go-homedir"
 )
 
-func NewServer(address string, output io.Writer, store sqliteStore) (server, error) {
-	if address == "" {
-		return server{}, errors.New("server address cannot be empty")
-	}
-
-	if output == nil {
-		return server{}, errors.New("output cannot be nil")
-	}
-
+// func NewServer(address string, output io.Writer, store sqliteStore) (server, error) {
+func NewServer(store sqliteStore, options ...serverOption) (server, error) {
 	assets, err := fs.Sub(css, "static")
 	if err != nil {
 		return server{}, err
 	}
 
-	server := server{
-		Server:     &http.Server{Addr: address},
-		output:     output,
+	s := server{
+		Server:     &http.Server{Addr: defaultAddress},
+		output:     os.Stdout,
 		store:      &store,
 		fileServer: http.FileServer(http.FS(assets)),
 	}
 
-	return server, nil
+	for _, opt := range options {
+		err := opt(&s)
+		if err != nil {
+			return server{}, err
+		}
+	}
+	return s, nil
 }
 
+func ServerWithAddress(address string) serverOption {
+	return func(s *server) error {
+		if address == "" {
+			return errors.New("address cannot be empty")
+		}
+		s.Addr = address
+		return nil
+	}
+}
+
+func ServerWithOutput(output io.Writer) serverOption {
+	return func(s *server) error {
+		if output == nil {
+			return errors.New("output cannot be nil")
+		}
+		s.output = output
+		return nil
+	}
+}
+
+// RunServer configures and starts a dominocount server on localhost port 8080
 func RunServer(output io.Writer) {
 	storeDir := os.Getenv(dbVolume)
 	if storeDir == "" {
@@ -54,13 +74,40 @@ func RunServer(output io.Writer) {
 		fmt.Fprintln(output, err)
 	}
 
-	server, err := NewServer(":8080", output, store)
+	address := os.Getenv("ADDRESS")
+	if address == "" {
+		fmt.Fprintln(output, "no address provided, defaulting to :8080")
+		address = "localhost:8080"
+	}
+
+	server, err := NewServer(store, ServerWithAddress(address), ServerWithOutput(output))
 	if err != nil {
 		fmt.Fprintln(output, err)
 	}
 
-	server.run()
+	server.Run()
 
+}
+func (s *server) Run() {
+	fmt.Fprintln(s.output, "starting http server")
+
+	s.Handler = s.Routes()
+
+	err := s.ListenAndServe()
+	if err != http.ErrServerClosed {
+		fmt.Fprintln(s.output, err)
+		return
+	}
+}
+func (s *server) Routes() http.Handler {
+	router := mux.NewRouter()
+	router.HandleFunc("/", s.HandleIndex())
+	router.HandleFunc("/match/create", s.HandleMatchForm())
+	router.HandleFunc("/match/", s.HandleMatch())
+	router.HandleFunc("/match/{id}", s.HandleMatch())
+	router.Handle("/static/{file}", http.StripPrefix("/static", s.fileServer))
+
+	return router
 }
 
 func (s server) HandleIndex() http.HandlerFunc {
@@ -168,18 +215,6 @@ func (s server) handlePatchMatch(w http.ResponseWriter, r *http.Request) {
 	render(w, r, matchTableTemplate, m)
 }
 
-func (s *server) run() {
-	fmt.Fprintln(s.output, "starting http server")
-
-	s.Handler = s.Routes()
-
-	err := s.ListenAndServe()
-	if err != http.ErrServerClosed {
-		fmt.Fprintln(s.output, err)
-		return
-	}
-}
-
 func queryStringParseID(r *http.Request) (int64, error) {
 	matchId := mux.Vars(r)["id"]
 	if matchId == "" {
@@ -215,16 +250,7 @@ type server struct {
 	fileServer http.Handler
 }
 
-func (s *server) Routes() http.Handler {
-	router := mux.NewRouter()
-	router.HandleFunc("/", s.HandleIndex())
-	router.HandleFunc("/match/create", s.HandleMatchForm())
-	router.HandleFunc("/match/", s.HandleMatch())
-	router.HandleFunc("/match/{id}", s.HandleMatch())
-	router.Handle("/static/{file}", http.StripPrefix("/static", s.fileServer))
-
-	return router
-}
+type serverOption func(*server) error
 
 //go:embed templates
 var resources embed.FS
@@ -250,4 +276,6 @@ const (
 	matchTableTemplate = "matchTable.html"
 
 	dbVolume = "SQLITE_VOLUME"
+
+	defaultAddress = "localhost:8080"
 )
