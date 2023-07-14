@@ -35,6 +35,7 @@ func NewServer(store sqliteStore, options ...serverOption) (server, error) {
 			return server{}, err
 		}
 	}
+	fmt.Println(s.Addr)
 	return s, nil
 }
 
@@ -77,7 +78,7 @@ func RunServer(output io.Writer) {
 	address := os.Getenv("ADDRESS")
 	if address == "" {
 		fmt.Fprintln(output, "no address provided, defaulting to :8080")
-		address = "localhost:8080"
+		address = defaultAddress
 	}
 
 	server, err := NewServer(store, ServerWithAddress(address), ServerWithOutput(output))
@@ -277,5 +278,5 @@ const (
 
 	dbVolume = "SQLITE_VOLUME"
 
-	defaultAddress = "localhost:8080"
+	defaultAddress = ":8080"
 )
